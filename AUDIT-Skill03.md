@@ -62,10 +62,12 @@ frontend: tsc --noEmit  → OK (0 erreur)
 GET https://seveng-zone-api.onrender.com/api/health
   → status=ok ok=True
 
-POST /api/auth/register (smoke2026)
-  → 201 user=smoke2026 role=player
-GET /api/me (avec le token)
-  → 200 user=smoke2026
+POST /api/auth/register { "username": "pseudo2026" }
+  → 201 user=pseudo2026 role=player   (pseudo uniquement)
+POST /api/auth/login { "username": "pseudo2026" }
+  → 200 token + profil
+POST /api/auth/login { "username": "ghost" }
+  → 401 (pseudo inconnu)
 ```
 
 ### 3.5 APK
@@ -94,6 +96,17 @@ Copié dans builds/7G-Zone-1.0.0-debug.apk (5,99 Mo)
 | 4.8 | Tests sockets : timeouts/assertions dues à des écouteurs attachés après l'événement asynchrone | Écouteurs attachés avant l'émission ; correction d'une parenthèse `setTimeout` erronée dans les fichiers de test |
 
 Aucun test n'a été désactivé ni tronqué pour obtenir le vert.
+
+## 4bis. Modification produit — authentification simplifiée (demande utilisateur)
+
+Suite à la demande du propriétaire du produit (« inscription impossible, demander seulement un pseudonyme »), l'authentification a été simplifiée :
+
+- **Inscription** : seul un **pseudonyme** (3-20 caractères, `[a-zA-Z0-9_-]`) est demandé. Un email généré (`<pseudo>@app.local`) et un mot de passe aléatoire sont créés automatiquement en base (contraintes SQL `NOT NULL` conservées, aucun changement de schéma).
+- **Connexion** : un **pseudonyme** suffit (l'utilisateur est retrouvé par pseudo ou email généré) ; il n'y a plus de vérification de mot de passe.
+- **Écran d'authentification** : deux onglets (Connexion / Inscription), un seul champ chacun. L'onglet « Récupération » (question de sécurité / nouveau mot de passe) a été retiré de l'interface ; l'endpoint serveur `POST /api/auth/reset-password` reste présent et fonctionnel mais n'est plus utilisé par l'app.
+- **Sécurité** : cette simplification est une décision produit assumée. L'authentification par pseudonyme seul est **faible** (quiconque connaît un pseudo peut se connecter) — acceptable pour un MVP de démonstration, à remplacer par un vrai mot de passe/email en V1 si l'application est exposée publiquement. Les jetons JWT et la session restent en place.
+
+**Tests mis à jour** : les tests d'authentification couvrent désormais « pseudo invalide » (400), « pseudo déjà pris » (409), « connexion par pseudo » (200) et « pseudo inconnu » (401). Suite complète : **24/24 tests backend verts** (8 API + 11 services + 5 sockets) + typechecks verts.
 
 ---
 
@@ -139,8 +152,8 @@ Aucun test n'a été désactivé ni tronqué pour obtenir le vert.
 ## 8. Conclusion
 
 - **Fonctionnel et en ligne :** backend Render opérationnel, authentification et API vérifiées en production.
-- **Testé :** 56 tests moteurs + 25 tests backend (API + services + sockets) + typechecks verts.
-- **Corrigé :** 8 problèmes réels identifiés et corrigés (dont 3 bugs serveur bloquants : contrainte `private`, rôle stale, erreurs HTTP en 500).
+- **Testé :** 56 tests moteurs + 24 tests backend (API + services + sockets) + typechecks verts.
+- **Corrigé :** 8 problèmes réels identifiés et corrigés (dont 3 bugs serveur bloquants : contrainte `private`, rôle stale, erreurs HTTP en 500), plus la simplification d'authentification demandée (pseudonyme seul).
 - **Non testé :** installation et gameplay sur téléphone réel (pas d'appareil).
 - **Bloqué/documenté :** persistance SQLite éphémère sur Render.
 
