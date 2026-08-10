@@ -25,14 +25,8 @@ export interface Profile {
 interface AuthState {
   user: Profile | null;
   loading: boolean;
-  login: (identifier: string, password: string) => Promise<Profile>;
-  register: (data: {
-    username: string;
-    email: string;
-    password: string;
-    security_question?: string;
-    security_answer?: string;
-  }) => Promise<Profile>;
+  login: (username: string) => Promise<Profile>;
+  register: (username: string) => Promise<Profile>;
   logout: () => void;
   refresh: () => Promise<void>;
   setUser: (u: Profile) => void;
@@ -76,10 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener?.('change', apply);
   }, [user?.theme]);
 
-  const login = async (identifier: string, password: string) => {
+  const login = async (username: string) => {
     const res = await api<{ token: string; user: Profile }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ identifier, password }),
+      body: JSON.stringify({ username }),
     });
     localStorage.setItem(TOKEN_KEY, res.token);
     setToken(res.token);
@@ -87,16 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res.user;
   };
 
-  const register = async (data: {
-    username: string;
-    email: string;
-    password: string;
-    security_question?: string;
-    security_answer?: string;
-  }) => {
+  const register = async (username: string) => {
     const res = await api<{ token: string; user: Profile }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ username }),
     });
     localStorage.setItem(TOKEN_KEY, res.token);
     setToken(res.token);

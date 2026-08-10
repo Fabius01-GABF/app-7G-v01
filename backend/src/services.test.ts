@@ -53,8 +53,8 @@ beforeEach(() => {
 });
 
 describe('auth', () => {
-  it('registers a user and returns a token + profile', () => {
-    const res = registerUser(repo, cfg, { username: 'alice', email: 'alice@test.dev', password: PASSWORD });
+  it('registers a user with only a pseudonym and returns a token + profile', () => {
+    const res = registerUser(repo, cfg, { username: 'alice' });
     assert.ok(res.token.length > 20);
     assert.equal(res.user.username, 'alice');
     assert.equal(res.user.xp, 0);
@@ -63,22 +63,18 @@ describe('auth', () => {
 
   it('rejects a duplicate username', () => {
     makeUser('bob', 'bob@test.dev');
-    expectHttp('CONFLICT', () => registerUser(repo, cfg, { username: 'BOB', email: 'other@test.dev', password: PASSWORD }));
+    expectHttp('CONFLICT', () => registerUser(repo, cfg, { username: 'BOB' }));
   });
 
-  it('rejects an invalid email', () => {
-    expectHttp('BAD_REQUEST', () => registerUser(repo, cfg, { username: 'carol', email: 'not-an-email', password: PASSWORD }));
+  it('rejects an invalid username', () => {
+    expectHttp('BAD_REQUEST', () => registerUser(repo, cfg, { username: 'ab' }));
   });
 
-  it('rejects a too-short password', () => {
-    expectHttp('BAD_REQUEST', () => registerUser(repo, cfg, { username: 'dave', email: 'dave@test.dev', password: 'short' }));
-  });
-
-  it('logs in with correct credentials and rejects wrong password', () => {
+  it('logs in with a pseudonym and rejects an unknown pseudonym', () => {
     makeUser('erin', 'erin@test.dev');
-    const ok = loginUser(repo, cfg, { identifier: 'erin@test.dev', password: PASSWORD });
+    const ok = loginUser(repo, cfg, { username: 'erin' });
     assert.equal(ok.user.username, 'erin');
-    expectHttp('UNAUTHORIZED', () => loginUser(repo, cfg, { identifier: 'erin@test.dev', password: 'wrong-pass' }));
+    expectHttp('UNAUTHORIZED', () => loginUser(repo, cfg, { username: 'ghost' }));
   });
 });
 

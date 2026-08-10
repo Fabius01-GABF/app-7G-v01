@@ -58,11 +58,11 @@ describe('api auth + RBAC', () => {
     assert.equal(me.body.user.username, 'alice');
   });
 
-  it('rejects a wrong password with 401', async () => {
+  it('rejects login with an unknown pseudonym (401)', async () => {
     register('bob', 'bob@test.dev');
     const res = await request(app)
       .post('/api/auth/login')
-      .send({ identifier: 'bob@test.dev', password: 'wrong-pass' });
+      .send({ username: 'ghost' });
     assert.equal(res.status, 401);
     assert.equal(res.body.error.code, 'UNAUTHORIZED');
   });

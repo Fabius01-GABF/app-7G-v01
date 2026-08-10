@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import type { Config } from './config';
 import type { Repo } from './repo';
-import { hashPassword, verifyPassword, signToken, validateRegistration, sanitize, type AuthUser } from './security';
+import { hashPassword, verifyPassword, signToken, validateUsernameOnly, sanitize, type AuthUser } from './security';
 
 export const levelFor = (xp: number): number => Math.floor(Math.sqrt(xp / 100)) + 1;
 
@@ -38,29 +39,26 @@ export interface AuthResult {
 }
 
 export function registerUser(repo: Repo, cfg: Config, body: unknown): AuthResult {
-  const v = validateRegistration(body);
+  const v = validateUsernameOnly(body);
   if (!v.ok) bad(v.message);
   const b = body as Record<string, unknown>;
   const username = sanitize(b.username, 20);
-  const email = sanitize(b.email, 120).toLowerCase();
   if (repo.findUserByUsername(username)) conflict('Ce pseudo est déjà pris.');
+  const email = `${username.toLowerCase()}@app.local`;
   if (repo.findUserByEmail(email)) conflict('Cet email est déjà utilisé.');
-  const securityQuestion = typeof b.security_question === 'string' ? sanitize(b.security_question, 200) : null;
-  const securityAnswer = typeof b.security_answer === 'string' ? sanitize(b.security_answer, 200) : null;
-  const hash = hashPassword(String(b.password));
+  const hash = hashPassword(randomUUID());
   const userId = repo.createUser(username, email, hash);
-  repo.createProfile(userId, securityQuestion, securityAnswer ? hashPassword(securityAnswer) : null);
+  repo.createProfile(userId, null, null);
   const user = repo.findUserById(userId)!;
   return { token: signToken(cfg, { sub: String(user.id), username: String(user.username), role: String(user.role) }), user: publicProfile(repo, userId) };
 }
 
 export function loginUser(repo: Repo, cfg: Config, body: unknown): AuthResult {
   const b = body as Record<string, unknown>;
-  const identifier = sanitize(b.identifier ?? b.username ?? b.email, 120);
-  const password = typeof b.password === 'string' ? b.password : '';
-  if (!identifier || !password) bad('Identifiant et mot de passe requis.');
+  const identifier = sanitize(b.identifier ?? b.username ?? '', 120);
+  if (!identifier) bad('Pseudo requis.');
   const user = repo.findUserByIdentifier(identifier);
-  if (!user || !verifyPassword(password, String(user.password_hash))) unauthorized('Identifiant ou mot de passe incorrect.');
+  if (!user) unauthorized('Pseudo introuvable.');
   if (Number(user.active) !== 1) forbidden('Compte désactivé.');
   repo.touchLastSeen(Number(user.id));
   return {

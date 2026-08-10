@@ -129,6 +129,15 @@ export function validateRegistration(body: unknown): { ok: true } | { ok: false;
   return { ok: true };
 }
 
+export function validateUsernameOnly(body: unknown): { ok: true } | { ok: false; message: string } {
+  if (!body || typeof body !== 'object') return { ok: false, message: 'Corps de requête invalide.' };
+  const b = body as Record<string, unknown>;
+  if (typeof b.username !== 'string' || !USERNAME_RE.test(b.username)) {
+    return { ok: false, message: 'Pseudo invalide (3-20 caractères, lettres/chiffres/_/-).' };
+  }
+  return { ok: true };
+}
+
 export function sanitize(v: unknown, maxLen: number): string {
   if (typeof v !== 'string') return '';
   return v.trim().slice(0, maxLen);
