@@ -1,0 +1,16 @@
+{
+  "name": "7g-zone",
+  "version": "1.0.0",
+  "private": true,
+  "description": "7G Zone — 7 jeux de société dans une seule application mobile",
+  "scripts": {
+    "backend:dev": "cd backend && npm run dev",
+    "backend:build": "cd backend && npm run build",
+    "backend:start": "cd backend && npm run start",
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "test": "cd frontend && npm test",
+    "apk:debug": "cd frontend && npm run apk:debug",
+    "apk:release": "cd frontend && npm run apk:release"
+  }
+}

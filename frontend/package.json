@@ -1,0 +1,35 @@
+{
+  "name": "7g-zone-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "npm run build && cap sync android",
+    "cap:add:android": "cap add android",
+    "apk:debug": "npm run build && cap sync android && cd android && gradlew.bat assembleDebug",
+    "apk:release": "npm run build && cap sync android && cd android && gradlew.bat assembleRelease"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.2.0",
+    "@capacitor/core": "^6.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.2.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.5"
+  }
+}

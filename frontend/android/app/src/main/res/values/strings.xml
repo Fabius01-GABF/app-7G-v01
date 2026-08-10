@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">7G Zone</string>
+    <string name="title_activity_main">7G Zone</string>
+    <string name="package_name">com.sevenzone.app</string>
+    <string name="custom_url_scheme">com.sevenzone.app</string>
+</resources>
