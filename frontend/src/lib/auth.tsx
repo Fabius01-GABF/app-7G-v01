@@ -25,9 +25,7 @@ export interface Profile {
 interface AuthState {
   user: Profile | null;
   loading: boolean;
-  login: (username: string) => Promise<Profile>;
-  register: (username: string) => Promise<Profile>;
-  logout: () => void;
+  retry: () => void;
   refresh: () => Promise<void>;
   setUser: (u: Profile) => void;
 }
@@ -36,25 +34,52 @@ const Ctx = createContext<AuthState | null>(null);
 
 const TOKEN_KEY = '7g.token';
 
+function guestName(): string {
+  return `Joueur-${Math.floor(10000 + Math.random() * 89999)}`;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (!t) {
-      setLoading(false);
-      return;
-    }
-    setToken(t);
-    api<{ user: Profile }>('/me')
-      .then((r) => setUserState(r.user))
-      .catch(() => {
-        localStorage.removeItem(TOKEN_KEY);
-        setToken(null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    let alive = true;
+    const boot = async () => {
+      setLoading(true);
+      const t = localStorage.getItem(TOKEN_KEY);
+      if (t) {
+        setToken(t);
+        try {
+          const r = await api<{ user: Profile }>('/me');
+          if (alive) setUserState(r.user);
+          return;
+        } catch {
+          localStorage.removeItem(TOKEN_KEY);
+          setToken(null);
+        }
+      }
+      for (let i = 0; i < 3; i++) {
+        try {
+          const r = await api<{ token: string; user: Profile }>('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify({ username: guestName() }),
+          });
+          localStorage.setItem(TOKEN_KEY, r.token);
+          setToken(r.token);
+          if (alive) setUserState(r.user);
+          return;
+        } catch {
+          // pseudo peut-être déjà pris ou réseau indisponible → nouvel essai
+        }
+      }
+      if (alive) setUserState(null);
+    };
+    void boot().finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [nonce]);
 
   useEffect(() => {
     const theme = user?.theme ?? 'system';
@@ -70,33 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener?.('change', apply);
   }, [user?.theme]);
 
-  const login = async (username: string) => {
-    const res = await api<{ token: string; user: Profile }>('/auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    });
-    localStorage.setItem(TOKEN_KEY, res.token);
-    setToken(res.token);
-    setUserState(res.user);
-    return res.user;
-  };
-
-  const register = async (username: string) => {
-    const res = await api<{ token: string; user: Profile }>('/auth/register', {
-      method: 'POST',
-      body: JSON.stringify({ username }),
-    });
-    localStorage.setItem(TOKEN_KEY, res.token);
-    setToken(res.token);
-    setUserState(res.user);
-    return res.user;
-  };
-
-  const logout = () => {
-    localStorage.removeItem(TOKEN_KEY);
-    setToken(null);
-    setUserState(null);
-  };
+  const retry = () => setNonce((n) => n + 1);
 
   const refresh = async () => {
     const res = await api<{ user: Profile }>('/me');
@@ -104,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <Ctx.Provider value={{ user, loading, login, register, logout, refresh, setUser: setUserState }}>
+    <Ctx.Provider value={{ user, loading, retry, refresh, setUser: setUserState }}>
       {children}
     </Ctx.Provider>
   );

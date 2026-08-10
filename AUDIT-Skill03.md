@@ -97,16 +97,17 @@ Copié dans builds/7G-Zone-1.0.0-debug.apk (5,99 Mo)
 
 Aucun test n'a été désactivé ni tronqué pour obtenir le vert.
 
-## 4bis. Modification produit — authentification simplifiée (demande utilisateur)
+## 4bis. Modification produit — authentification retirée de l'interface (demande utilisateur)
 
-Suite à la demande du propriétaire du produit (« inscription impossible, demander seulement un pseudonyme »), l'authentification a été simplifiée :
+Suite à la demande du propriétaire du produit (« enlève complètement le bail d'inscription ou de connexion »), **aucun écran de connexion/inscription n'existe plus dans l'application** :
 
-- **Inscription** : seul un **pseudonyme** (3-20 caractères, `[a-zA-Z0-9_-]`) est demandé. Un email généré (`<pseudo>@app.local`) et un mot de passe aléatoire sont créés automatiquement en base (contraintes SQL `NOT NULL` conservées, aucun changement de schéma).
-- **Connexion** : un **pseudonyme** suffit (l'utilisateur est retrouvé par pseudo ou email généré) ; il n'y a plus de vérification de mot de passe.
-- **Écran d'authentification** : deux onglets (Connexion / Inscription), un seul champ chacun. L'onglet « Récupération » (question de sécurité / nouveau mot de passe) a été retiré de l'interface ; l'endpoint serveur `POST /api/auth/reset-password` reste présent et fonctionnel mais n'est plus utilisé par l'app.
-- **Sécurité** : cette simplification est une décision produit assumée. L'authentification par pseudonyme seul est **faible** (quiconque connaît un pseudo peut se connecter) — acceptable pour un MVP de démonstration, à remplacer par un vrai mot de passe/email en V1 si l'application est exposée publiquement. Les jetons JWT et la session restent en place.
+- **Compte invité automatique** : à chaque premier lancement (ou si le jeton stocké est invalide), l'app crée silencieusement un compte au pseudonyme généré `Joueur-XXXXX` via `POST /api/auth/register`, stocke le jeton dans `localStorage` (`7g.token`) et entre directement dans l'app. Aucune saisie utilisateur.
+- **Écran « Hors ligne »** : si le serveur est injoignable (3 tentatives de création échouées), l'app affiche un écran « Hors ligne » avec un bouton « Réessayer » — pas de formulaire de connexion.
+- **Fichier supprimé** : `frontend/src/screens/AuthScreen.tsx` (supprimé). `login`/`register`/`logout` retirés du contexte `auth.tsx` (remplacés par un bootstrap automatique + `retry`).
+- **Fonctionnalités conservées** : profil (pseudo modifiable, avatar, thème), XP, récompense quotidienne, classements, matchmaking — tout fonctionne via le compte invité. Le backend est inchangé (les endpoints `register`/`login`/`reset-password` restent disponibles).
+- **Sécurité** : compte invité par pseudonyme auto-généré = décision produit assumée. Authentification faible (le pseudo est affiché et modifiable), acceptable pour un MVP de démonstration, à remplacer par un vrai compte/email en V1 si l'application est exposée publiquement. Les jetons JWT et la session restent en place.
 
-**Tests mis à jour** : les tests d'authentification couvrent désormais « pseudo invalide » (400), « pseudo déjà pris » (409), « connexion par pseudo » (200) et « pseudo inconnu » (401). Suite complète : **24/24 tests backend verts** (8 API + 11 services + 5 sockets) + typechecks verts.
+**Tests mis à jour** : les tests d'authentification serveur couvrent « pseudo invalide » (400), « pseudo déjà pris » (409), « connexion par pseudo » (200) et « pseudo inconnu » (401). Suite complète : **24/24 tests backend verts** (8 API + 11 services + 5 sockets) + typechecks verts + **56/56 tests moteurs frontend** + build Vite OK + APK régénéré.
 
 ---
 
@@ -143,9 +144,8 @@ Suite à la demande du propriétaire du produit (« inscription impossible, dema
 > Note : l'APK est signé avec la **clé debug** automatique (Android Studio conventionnelle). C'est normal pour une livraison de test ; une version release signée est une évolution possible.
 
 ### Vérification de la connexion au backend
-- À l'ouverture de l'application : écran de connexion/inscription.
-- S'inscrire → le compte est créé sur `https://seveng-zone-api.onrender.com`.
-- Si l'application reste bloquée sur « Hors ligne » : vérifier la connexion Internet du téléphone, puis vérifier que le service Render est réveillé (les instances gratuites s'endorment après ~15 min d'inactivité ; ouvrir `https://seveng-zone-api.onrender.com/api/health` dans un navigateur le réveille).
+- À l'ouverture de l'application : le compte invité est créé automatiquement (aucun écran de connexion). L'accueil affiche le pseudonyme généré (« Salut, Joueur-XXXXX ! »).
+- Si l'application reste bloquée sur « Hors ligne » : vérifier la connexion Internet du téléphone, puis vérifier que le service Render est réveillé (les instances gratuites s'endorment après ~15 min d'inactivité ; ouvrir `https://seveng-zone-api.onrender.com/api/health` dans un navigateur le réveille), puis appuyer sur « Réessayer ».
 
 ---
 

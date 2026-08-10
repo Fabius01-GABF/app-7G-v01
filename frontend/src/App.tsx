@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './lib/auth';
 import { api } from './lib/api';
-import { AuthScreen } from './screens/AuthScreen';
 import { Home } from './screens/Home';
 import { GameHub } from './screens/GameHub';
 import { PlayScreen } from './screens/PlayScreen';
@@ -14,7 +13,7 @@ import { NotificationsScreen } from './screens/NotificationsScreen';
 import { AdminScreen } from './screens/AdminScreen';
 
 function Shell({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [unread, setUnread] = useState(0);
   const loc = useLocation();
 
@@ -48,15 +47,6 @@ function Shell({ children }: { children: React.ReactNode }) {
               </div>
             </NavLink>
           )}
-          {user && (
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={logout}
-              aria-label="Déconnexion"
-            >
-              ⌁
-            </button>
-          )}
         </div>
       </header>
 
@@ -81,8 +71,28 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function OfflineScreen({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="container center" style={{ maxWidth: 420, paddingTop: 48 }}>
+      <h1>
+        7G<b>Zone</b>
+      </h1>
+      <p className="dim">7 jeux classiques, classements et défis en ligne</p>
+      <div className="card col" style={{ marginTop: 16 }}>
+        <p style={{ margin: '0 0 4px' }}>Hors ligne</p>
+        <p className="dim" style={{ fontSize: 13, margin: 0 }}>
+          Impossible de joindre le serveur. Vérifiez votre connexion puis réessayez.
+        </p>
+        <button className="btn btn-block" onClick={onRetry}>
+          Réessayer
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, retry } = useAuth();
 
   if (loading) {
     return (
@@ -93,11 +103,7 @@ export default function App() {
   }
 
   if (!user) {
-    return (
-      <Routes>
-        <Route path="*" element={<AuthScreen />} />
-      </Routes>
-    );
+    return <OfflineScreen onRetry={retry} />;
   }
 
   return (
