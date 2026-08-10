@@ -54,7 +54,7 @@ const ROLES: Record<string, number> = {
   super_admin: 4,
 };
 
-export function requireAuth(cfg: Config) {
+export function requireAuth(cfg: Config, repo: { findUserById(id: number): Record<string, unknown> | undefined }) {
   return (req: Request, res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
@@ -64,7 +64,11 @@ export function requireAuth(cfg: Config) {
     if (!payload) {
       return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Token invalide ou expiré.' } });
     }
-    req.authUser = { id: Number(payload.sub), username: payload.username, role: payload.role };
+    const user = repo.findUserById(Number(payload.sub));
+    if (!user || Number(user.active) !== 1) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Compte introuvable ou désactivé.' } });
+    }
+    req.authUser = { id: Number(user.id), username: String(user.username), role: String(user.role) };
     return next();
   };
 }

@@ -35,6 +35,10 @@ export class Repo {
     return Number(res.lastInsertRowid);
   }
 
+  setUserRole(userId: number, role: string): void {
+    this.db.prepare('UPDATE users SET role = ? WHERE id = ?').run(role, userId);
+  }
+
   createProfile(userId: number, securityQuestion: string | null, securityAnswerHash: string | null): void {
     this.db
       .prepare(

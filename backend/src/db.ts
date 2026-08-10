@@ -210,6 +210,32 @@ const MIGRATIONS: Array<{ version: number; name: string; up: (db: DatabaseSync) 
       `);
     },
   },
+  {
+    version: 2,
+    name: 'matches-mode-private',
+    up(db) {
+      db.exec('PRAGMA legacy_alter_table = ON;');
+      db.exec(`
+        ALTER TABLE matches RENAME TO matches_old;
+        CREATE TABLE matches (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          game TEXT NOT NULL REFERENCES games(id),
+          mode TEXT NOT NULL DEFAULT 'casual' CHECK (mode IN ('casual','ranked','solo','local','private')),
+          status TEXT NOT NULL DEFAULT 'playing' CHECK (status IN ('playing','finished','abandoned','cancelled')),
+          winner_id INTEGER REFERENCES users(id),
+          payload TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          finished_at TEXT
+        );
+        INSERT INTO matches (id, game, mode, status, winner_id, payload, created_at, finished_at)
+          SELECT id, game, mode, status, winner_id, payload, created_at, finished_at FROM matches_old;
+        DROP TABLE matches_old;
+        CREATE INDEX IF NOT EXISTS idx_matches_game ON matches(game);
+        CREATE INDEX IF NOT EXISTS idx_matches_status ON matches(status);
+      `);
+      db.exec('PRAGMA legacy_alter_table = OFF;');
+    },
+  },
 ];
 
 export interface DbHandle {
@@ -245,18 +271,24 @@ function migrate(db: DatabaseSync): void {
   const applied = new Set<number>(
     (db.prepare('SELECT version FROM schema_migrations').all() as Array<{ version: number }>).map((r) => r.version),
   );
-  for (const m of MIGRATIONS) {
-    if (applied.has(m.version)) continue;
-    const run = db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)');
-    db.exec('BEGIN');
-    try {
-      m.up(db);
-      run.run(m.version, m.name);
-      db.exec('COMMIT');
-    } catch (err) {
-      db.exec('ROLLBACK');
-      throw err;
+  const pending = MIGRATIONS.filter((m) => !applied.has(m.version));
+  if (pending.length === 0) return;
+  db.exec('PRAGMA foreign_keys = OFF;');
+  try {
+    for (const m of pending) {
+      const run = db.prepare('INSERT INTO schema_migrations (version, name) VALUES (?, ?)');
+      db.exec('BEGIN');
+      try {
+        m.up(db);
+        run.run(m.version, m.name);
+        db.exec('COMMIT');
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
     }
+  } finally {
+    db.exec('PRAGMA foreign_keys = ON;');
   }
 }
 

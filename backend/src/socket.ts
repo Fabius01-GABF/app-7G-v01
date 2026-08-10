@@ -148,6 +148,7 @@ export function attachSocket(io: Server, cfg: Config, repo: Repo): void {
         room.lastActivity = Date.now();
         socketRooms.set(socket.id, code);
         socket.join(`room:${code}`);
+        socket.emit('room:joined', { code, room: publicRoom(room) });
         io.to(`room:${code}`).emit('room:update', { room: publicRoom(room) });
       } catch (err) {
         socket.emit('room:error', { message: err instanceof Error ? err.message : 'Erreur.' });
@@ -440,10 +441,8 @@ export function attachSocket(io: Server, cfg: Config, repo: Repo): void {
   }
 
   function resignPlayer(room: GameRoom, userId: number, reason: string): void {
-    const adapter = adapters[room.game];
     const loserId = String(userId);
     const winnerId = room.players.find((p) => p.userId !== userId)?.userId ?? null;
-    room.state = adapter.apply(room.state, null as never, loserId, room.rng).state;
     const finish = () => {
       room.status = 'finished';
       room.lastActivity = Date.now();

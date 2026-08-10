@@ -4,8 +4,26 @@ import type { QuizQuestion } from '../../shared/src/engines/quiz/quiz';
 import { loadConfig } from './config';
 import { openDb } from './db';
 import { Repo } from './repo';
+import { hashPassword } from './security';
+
+export function seedAdmin(repo: Repo, env: NodeJS.ProcessEnv = process.env): void {
+  const username = env.ADMIN_USERNAME?.trim();
+  const email = env.ADMIN_EMAIL?.trim();
+  const password = env.ADMIN_PASSWORD;
+  if (!username || !email || !password) return;
+  if (repo.findUserByUsername(username) || repo.findUserByEmail(email)) return;
+  if (password.length < 8) {
+    console.warn('[7gzone] ADMIN_PASSWORD trop court (8+ requis) — admin non créé.');
+    return;
+  }
+  const id = repo.createUser(username, email, hashPassword(password));
+  repo.createProfile(id, null, null);
+  repo.setUserRole(id, 'super_admin');
+  console.log(`[7gzone] compte super admin créé: ${username}`);
+}
 
 export function seedDefaults(repo: Repo): void {
+  seedAdmin(repo);
   for (const g of GAMES) {
     repo.upsertGame({
       id: g.id,

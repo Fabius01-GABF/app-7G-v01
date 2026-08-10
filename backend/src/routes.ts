@@ -19,15 +19,7 @@ function wrap(fn: Handler) {
 export function buildApiRouter(cfg: Config, repo: Repo): Router {
   const api = Router();
 
-  api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-    if (err instanceof svc.HttpError) {
-      return res.status(err.status).json({ error: { code: err.code, message: err.message } });
-    }
-    console.error('[api]', err);
-    return res.status(500).json({ error: { code: 'INTERNAL', message: 'Erreur interne.' } });
-  });
-
-  const auth = requireAuth(cfg);
+  const auth = requireAuth(cfg, repo);
 
   // ---- /auth ----
   api.post('/auth/register', rateLimit(cfg.rateLimitAuth, 60_000), wrap((req, res) => {
@@ -236,8 +228,16 @@ export function buildApiRouter(cfg: Config, repo: Repo): Router {
   }));
 
   api.get('/health', wrap((_req, res) => {
-    res.json({ status: 'ok', time: new Date().toISOString() });
+    res.json({ ok: true, status: 'ok', time: new Date().toISOString() });
   }));
+
+  api.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    if (err instanceof svc.HttpError) {
+      return res.status(err.status).json({ error: { code: err.code, message: err.message } });
+    }
+    console.error('[api]', err);
+    return res.status(500).json({ error: { code: 'INTERNAL', message: 'Erreur interne.' } });
+  });
 
   return api;
 }
